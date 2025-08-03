@@ -1,7 +1,7 @@
 import { useState } from "react";
 import BlogCard from "../components/BlogCard";
 import BlogDetailModal from "../components/BlogDetailModal";
-import BlogModal from "../components/BlogModal"; // ✅ Using correct modal
+import BlogModal from "../components/BlogModal"; 
 
 const Blogs = () => {
   const [showModal, setShowModal] = useState(false);
@@ -12,7 +12,7 @@ const Blogs = () => {
       shortDescription: "Initial design phase completed successfully.",
       fullDescription:
         "The team completed the initial design phase of Project Alpha, marking a significant milestone. It involved detailed wireframes, component planning, and user flows. Hats off to the entire team!",
-      image: "https://picsum.photos/500/300",
+      image: "",
       tags: ["Milestone", "UX"],
       contributors: ["Sarah", "David"],
     },
