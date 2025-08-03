@@ -1,35 +1,63 @@
+import { useState } from 'react';
+
 const LoginForm = ({ onSwitch }) => {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(formData)
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Login failed");
+
+      alert("Login successful!");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900">Welcome to Chttrix</h2>
-        <p className="mt-2 text-sm text-gray-600">
-          Sign in to start collaborating on your next big idea.
-        </p>
+        <p className="mt-2 text-sm text-gray-600">Sign in to start collaborating on your next big idea.</p>
       </div>
 
-      <form className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-          <input
-            id="email"
-            type="email"
-            required
-            placeholder="Enter your email"
-            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          name="email"
+          type="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="Enter your email"
+          required
+          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md"
+        />
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
-          <input
-            id="password"
-            type="password"
-            required
-            placeholder="Enter your password"
-            className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          />
-        </div>
+        <input
+          name="password"
+          type="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="Enter your password"
+          required
+          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md"
+        />
 
         <button
           type="submit"
@@ -37,17 +65,6 @@ const LoginForm = ({ onSwitch }) => {
         >
           Login
         </button>
-
-        <button className="w-full flex justify-center items-center gap-2 py-2 px-4 border border-gray-300 rounded-md text-sm hover:bg-gray-100">
-          <span>🔵</span> Login with Google
-        </button>
-
-        <p className="text-sm text-center text-gray-500">
-          Don’t have an account?{' '}
-          <button type="button" onClick={onSwitch} className="text-blue-600 hover:underline">
-            Register
-          </button>
-        </p>
       </form>
     </div>
   );
