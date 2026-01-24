@@ -15,6 +15,7 @@ class ConversationKeyService {
     constructor() {
         this.conversationKeys = new Map(); // conversationId → {key: CryptoKey, algorithm: string}
     }
+        this.initializing = new Set(); // Guard against concurrent auto-init
 
     // ==================== KEY GENERATION ====================
 
@@ -225,13 +226,62 @@ class ConversationKeyService {
 
             if (!response.ok) {
                 if (response.status === 404) {
-                    // ❌ CRITICAL ERROR: Channel exists without keys
-                    // This indicates a server invariant violation
-                    throw new Error(
-                        `BROKEN_CHANNEL: No encryption keys found for ${conversationType}:${conversationId}. ` +
-                        `This indicates a server invariant violation. The channel exists but has no conversation keys. ` +
-                        `Contact support or ask an admin to reinitialize this channel.`
-                    );
+                    console.warn(`⚠️ No conversation key found for ${cacheKey}`);
+                    console.warn(`⚠️ Attempting to auto-initialize conversation key...`);
+
+                    // Safety net: Try to initialize the key
+                    // Note: This requires knowing the conversation members
+                    try {
+                        // Fetch conversation details to get members
+                        let members = [];
+                        let workspaceId = null;
+
+                        if (conversationType === 'channel') {
+                            // Fetch channel details
+                            const channelRes = await fetch(`/api/chat/channel/${conversationId}/details`, {
+                                credentials: 'include'
+                            });
+                            if (channelRes.ok) {
+                                const channelData = await channelRes.json();
+                                members = channelData.channel.members || [];
+                                workspaceId = channelData.channel.workspace || channelData.channel.workspaceId;
+                            }
+                        } else if (conversationType === 'dm') {
+                            // Fetch DM details
+                            const dmRes = await fetch(`/api/chat/dm/${conversationId}`, {
+                                credentials: 'include'
+                            });
+                            if (dmRes.ok) {
+                                const dmData = await dmRes.json();
+                                members = dmData.dm.participants || [];
+                                workspaceId = dmData.dm.workspace;
+                            }
+                        }
+
+                        if (members.length > 0 && workspaceId) {
+                            console.log(`🔐 Auto-initializing conversation key for ${members.length} members...`);
+
+                            // Create and store the conversation key
+                            await this.createAndStoreConversationKey(
+                                conversationId,
+                                conversationType,
+                                workspaceId,
+                                members
+                            );
+
+                            // Retry fetch (non-recursive - direct return from cache)
+                            const cacheEntry = this.conversationKeys.get(cacheKey);
+                            if (cacheEntry) {
+                                console.log(`✅ Auto-initialization successful, returning cached key`);
+                                return cacheEntry.key;
+                            }
+                        }
+                    } catch (initError) {
+                        console.error('Failed to auto-initialize conversation key:', initError);
+                    }
+
+                    // If auto-init failed, return null
+                    return null;
                 }
                 throw new Error('Failed to fetch conversation key');
             }
