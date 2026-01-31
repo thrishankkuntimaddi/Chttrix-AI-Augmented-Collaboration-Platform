@@ -9,6 +9,9 @@
  * @module socket/handlers/presence
  */
 
+const { incrementCounter } = require('../../shared/metrics');
+const { PresenceUpdateEvent } = require('../schema/baseEvent.schema');
+
 /**
  * Register presence-related socket handlers
  * @param {Server} io - Socket.io server instance
@@ -37,12 +40,59 @@ function registerPresenceHandlers(io, socket) {
     socket.on('user:status_change', (data) => {
         const { status, customStatus } = data;
 
-        // Validate status
-        const validStatuses = ['online', 'away', 'busy', 'offline'];
-        if (!validStatuses.includes(status)) {
+        // PHASE 2 DAY 5: Handler-level type-specific validation
+        const eventData = {
+            type: 'presence:update',
+            payload: {
+                userId: socket.user?.id,
+                status: status,
+                timestamp: Date.now()
+            },
+            version: 1
+        };
+
+        const result = PresenceUpdateEvent.safeParse(eventData);
+
+        if (!result.success) {
+            // PHASE 2 DAY 5: Handler validation failure logging
+            const failureLog = {
+                timestamp: new Date().toISOString(),
+                level: 'WARN',
+                operation: 'socket.handler.validation',
+                handler: 'user:status_change',
+                userId: socket.user?.id || 'unknown',
+                result: 'REJECTED',
+                reason: 'TYPE_SPECIFIC_VALIDATION_FAILED',
+                errors: result.error.issues.map(i => ({
+                    path: i.path.join('.'),
+                    message: i.message
+                }))
+            };
+            console.log(JSON.stringify(failureLog));
+
+            incrementCounter('socket.handler.validation.failure', {
+                handler: 'user:status_change',
+                reason: 'SCHEMA_VIOLATION'
+            });
+
             socket.emit('error', { message: 'Invalid status' });
             return;
         }
+
+        // PHASE 2 DAY 5: Handler validation success logging
+        const successLog = {
+            timestamp: new Date().toISOString(),
+            level: 'INFO',
+            operation: 'socket.handler.validation',
+            handler: 'user:status_change',
+            userId: socket.user?.id || 'unknown',
+            result: 'SUCCESS'
+        };
+        console.log(JSON.stringify(successLog));
+
+        incrementCounter('socket.handler.validation.success', {
+            handler: 'user:status_change'
+        });
 
         // Broadcast to all users (or workspace-specific)
         io.emit('user:status_change', {

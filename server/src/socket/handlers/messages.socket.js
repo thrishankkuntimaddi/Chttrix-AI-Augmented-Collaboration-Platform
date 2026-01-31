@@ -12,6 +12,12 @@
 
 const logger = require('../../../utils/logger');
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PHASE 2 DAY 5: Type-specific schemas and metrics
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { TypingEvent } = require('../schema/baseEvent.schema');
+const { incrementCounter } = require('../../shared/metrics');
+
 /**
  * Register message-related socket handlers
  * @param {Server} io - Socket.io server instance
@@ -214,6 +220,62 @@ function registerMessageHandlers(io, socket) {
      * Broadcasts to all users in the conversation except sender
      */
     socket.on('chat:typing', (data) => {
+        // PHASE 2 DAY 5: Handler-level type-specific validation
+        const eventData = {
+            type: data.isTyping ? 'typing:start' : 'typing:stop',
+            payload: {
+                channelId: data.channelId || data.dmId,
+                userId: socket.user?.id
+            },
+            version: 1
+        };
+
+        const result = TypingEvent.safeParse(eventData);
+
+        if (!result.success) {
+            // PHASE 2 DAY 5: Handler validation failure logging
+            const failureLog = {
+                timestamp: new Date().toISOString(),
+                level: 'WARN',
+                operation: 'socket.handler.validation',
+                handler: 'chat:typing',
+                userId: socket.user?.id || 'unknown',
+                result: 'REJECTED',
+                reason: 'TYPE_SPECIFIC_VALIDATION_FAILED',
+                errors: result.error.issues.map(i => ({
+                    path: i.path.join('.'),
+                    message: i.message
+                }))
+            };
+            console.log(JSON.stringify(failureLog));
+
+            incrementCounter('socket.handler.validation.failure', {
+                handler: 'chat:typing',
+                reason: 'SCHEMA_VIOLATION'
+            });
+
+            socket.emit('error', {
+                message: 'Invalid typing event format',
+                details: result.error.issues.map(i => i.message).join(', ')
+            });
+            return;
+        }
+
+        // PHASE 2 DAY 5: Handler validation success logging
+        const successLog = {
+            timestamp: new Date().toISOString(),
+            level: 'INFO',
+            operation: 'socket.handler.validation',
+            handler: 'chat:typing',
+            userId: socket.user?.id || 'unknown',
+            result: 'SUCCESS'
+        };
+        console.log(JSON.stringify(successLog));
+
+        incrementCounter('socket.handler.validation.success', {
+            handler: 'chat:typing'
+        });
+
         const { channelId, dmId, isTyping } = data;
 
         const room = channelId ? `channel:${channelId}` : `dm:${dmId}`;
