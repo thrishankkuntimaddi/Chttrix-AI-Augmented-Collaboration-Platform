@@ -14,6 +14,11 @@ const mongoose = require('mongoose');
 const Channel = require('../../../models/Channel');
 const conversationKeysService = require('../modules/conversations/conversationKeys.service');
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PHASE 2 DAY 3: Metrics
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { incrementCounter } = require('./metrics');
+
 /**
  * Atomically add user to channel with E2EE key distribution
  * 
@@ -30,6 +35,18 @@ async function joinChannelAtomic(channelId, userId) {
     console.log(`   ├─ User: ${userId}`);
     console.log(`   └─ Session ID: ${session.id}`);
     console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
+    // PHASE 2 DAY 3: Transaction start logging
+    const transactionStartLog = {
+        timestamp: new Date().toISOString(),
+        level: 'INFO',
+        operation: 'transaction.started',
+        sessionId: session.id.toString(),
+        channelId: channelId,
+        userId: userId,
+        type: 'joinChannelAtomic'
+    };
+    console.log(JSON.stringify(transactionStartLog));
 
     try {
         await session.withTransaction(async () => {
@@ -86,6 +103,22 @@ async function joinChannelAtomic(channelId, userId) {
         console.log(`   └─ INV-001 satisfied: ATOMIC CONSISTENCY GUARANTEED`);
         console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
 
+        // PHASE 2 DAY 3: Transaction success logging + metrics
+        const successLog = {
+            timestamp: new Date().toISOString(),
+            level: 'INFO',
+            operation: 'transaction.committed',
+            sessionId: session.id.toString(),
+            channelId: channelId,
+            userId: userId,
+            result: 'SUCCESS'
+        };
+        console.log(JSON.stringify(successLog));
+
+        incrementCounter('e2ee.transaction.success', {
+            operation: 'joinChannelAtomic'
+        });
+
         return { success: true };
 
     } catch (error) {
@@ -98,6 +131,25 @@ async function joinChannelAtomic(channelId, userId) {
         console.error(`   ├─ User in encryptedKeys[]: ✗ (never added)`);
         console.error(`   └─ Result: User NOT joined (safe failure)`);
         console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`);
+
+        // PHASE 2 DAY 3: Transaction rollback logging + metrics
+        const rollbackLog = {
+            timestamp: new Date().toISOString(),
+            level: 'ERROR',
+            operation: 'transaction.rollback',
+            sessionId: session.id.toString(),
+            channelId: channelId,
+            userId: userId,
+            result: 'ROLLBACK',
+            reason: error.message,
+            errorCode: error.message.includes('E2EE_KEY') ? 'E2EE_KEY_DISTRIBUTION_FAILED' : 'TRANSACTION_ERROR'
+        };
+        console.log(JSON.stringify(rollbackLog));
+
+        incrementCounter('e2ee.transaction.rollback', {
+            operation: 'joinChannelAtomic',
+            reason: rollbackLog.errorCode
+        });
 
         return {
             success: false,
