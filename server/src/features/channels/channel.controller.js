@@ -10,7 +10,7 @@ const conversationKeysService = require("../../modules/conversations/conversatio
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // PHASE 1 DAY 2: E2EE Validation
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const { validateEncryptionKeyAccess } = require("../../shared/e2ee.transactions");
+const { validateEncryptionKeyAccess, joinChannelAtomic } = require("../../shared/e2ee.transactions");
 
 /**
  * Create channel (public or private).
@@ -208,43 +208,28 @@ exports.inviteToChannel = async (req, res) => {
       return res.status(400).json({ message: "User already a member" });
     }
 
-    // 🔧 FIX: Convert all existing members to new format before adding new member
-    channel.members = normalizeMemberFormat(channel.members, channel.createdAt);
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔐 PHASE 1 DAY 4: Atomic transaction for invite
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    console.log(`🔐 [PHASE 1 DAY 4] Using atomic transaction for invite`);
+    const atomicResult = await joinChannelAtomic(channelId, inviteeId);
 
-    channel.members.push({
-      user: inviteeId,
-      joinedAt: new Date()
-    });
+    if (!atomicResult.success) {
+      console.error(`❌ [PHASE 1 DAY 4] Atomic invite failed:`, atomicResult.error);
+      return res.status(500).json({
+        message: 'Failed to add member to channel. E2EE key distribution failed.',
+        error: atomicResult.code || 'INVITE_FAILED'
+      });
+    }
+
+    console.log(`✅ [PHASE 1 DAY 4] User ${inviteeId} atomically added to channel ${channelId}`);
 
     // 🎯 OWNER PROTECTION: If the invited user is the channel creator, restore them as admin
     const isChannelCreator = String(channel.createdBy) === String(inviteeId);
     if (isChannelCreator && !channel.admins.some(adminId => String(adminId) === String(inviteeId))) {
       channel.admins.push(inviteeId);
-
-    }
-
-    await saveWithRetry(channel);
-
-    // 🔐 PHASE 4: Distribute conversation key to new member
-    try {
-      const hasKeys = await conversationKeysService.hasConversationKeys(channelId, 'channel');
-
-      if (hasKeys) {
-        const distributed = await conversationKeysService.distributeKeyToNewMember(
-          channelId,
-          'channel',
-          inviteeId
-        );
-
-        if (distributed) {
-          console.log(`✅ [PHASE 4] Distributed conversation key for #${channel.name} to user ${inviteeId}`);
-        } else {
-          console.warn(`⚠️ [PHASE 4] Could not distribute key for #${channel.name} to user ${inviteeId}`);
-        }
-      }
-    } catch (keyError) {
-      // Non-blocking: log error but don't fail the invite
-      console.error(`❌ [PHASE 4] Key distribution failed for #${channel.name}:`, keyError.message);
+      await channel.save();
+      console.log(`🎯 [OWNER PROTECTION] Restored creator ${inviteeId} as admin`);
     }
 
     // optional: emit socket event to channel room or to invitee
@@ -316,39 +301,25 @@ exports.joinChannel = async (req, res) => {
     // Check if already member
     const isAlreadyMember = isMember(channel.members, userId);
 
-    if (!isAlreadyMember) {
-      // 🔧 FIX: Convert all existing members to new format before adding new member
-      channel.members = normalizeMemberFormat(channel.members, channel.createdAt);
+    if (isAlreadyMember) {
+      return res.json({ channelId, joined: true, alreadyMember: true });
+    }
 
-      channel.members.push({
-        user: userId,
-        joinedAt: new Date()
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔐 PHASE 1 DAY 3: Atomic transaction for join
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    console.log(`🔐 [PHASE 1 DAY 3] Using atomic transaction for join`);
+    const atomicResult = await joinChannelAtomic(channelId, userId);
+
+    if (!atomicResult.success) {
+      console.error(`❌ [PHASE 1 DAY 3] Atomic join failed:`, atomicResult.error);
+      return res.status(500).json({
+        message: 'Failed to join channel. E2EE key distribution failed.',
+        error: atomicResult.code || 'JOIN_FAILED'
       });
-      await saveWithRetry(channel);
     }
 
-    // 🔐 E2EE: Distribute conversation key to new member if encryption exists
-    try {
-      const hasKeys = await conversationKeysService.hasConversationKeys(channelId, 'channel');
-
-      if (hasKeys) {
-        const distributed = await conversationKeysService.distributeKeyToNewMember(
-          channelId,
-          'channel',
-          userId,
-          channel.workspace.toString()
-        );
-
-        if (distributed) {
-          console.log(`🔐 [E2EE] Distributed conversation key to ${userId}`);
-        } else {
-          console.warn(`⚠️ [E2EE] Could not auto-distribute key to ${userId} - client-side handling required`);
-        }
-      }
-    } catch (keyError) {
-      // Non-blocking: log error but don't fail the join
-      console.error('[E2EE] Key distribution failed (non-blocking):', keyError.message);
-    }
+    console.log(`✅ [PHASE 1 DAY 3] User ${userId} atomically joined channel ${channelId}`);
 
     // optional socket: join user to room on server side handled by socket connection when client emits join-channel
     const io = req.app?.get("io");
