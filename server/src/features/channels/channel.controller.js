@@ -2,11 +2,15 @@
 const Channel = require("../../../models/Channel");
 const User = require("../../../models/User");
 const Message = require("../../../models/Message");
-const { saveWithRetry } = require("../../../utils/mongooseRetry");
-const { handleError, notFound, badRequest, forbidden } = require("../../../utils/responseHelpers");
-const { extractMemberId, isMember, normalizeMemberFormat } = require("../../../utils/memberHelpers");
+const { forbidden, notFound, badRequest, handleError } = require("../../../utils/responseHelpers");
+const mongoose = require('mongoose');
 const { emitToWorkspace, emitToChannel, emitToUser, emitToUsers } = require("../../../utils/socketHelpers");
 const conversationKeysService = require("../../modules/conversations/conversationKeys.service");
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PHASE 1 DAY 2: E2EE Validation
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { validateEncryptionKeyAccess } = require("../../shared/e2ee.transactions");
 
 /**
  * Create channel (public or private).
@@ -401,6 +405,22 @@ exports.updateChannel = async (req, res) => {
 exports.getChannelMembers = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.user.sub;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔐 PHASE 1 DAY 2: Hard validation before channel members access
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    try {
+      await validateEncryptionKeyAccess(userId, id);
+      console.log(`✅ [E2EE VALIDATION][MEMBERS] User ${userId} has valid key for channel ${id}`);
+    } catch (e2eeError) {
+      console.error(`❌ [E2EE VALIDATION][MEMBERS] User ${userId} lacks key for channel ${id}:`, e2eeError.message);
+      return res.status(403).json({
+        error: 'E2EE_KEYS_MISSING',
+        message: 'You do not have encryption keys for this channel. Please rejoin or contact support.'
+      });
+    }
+
     const channel = await Channel.findById(id)
       .populate('members.user', 'username profilePicture email');
 
@@ -700,6 +720,20 @@ exports.getChannelDetails = async (req, res) => {
   try {
     const userId = req.user.sub;
     const channelId = req.params.id;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 🔐 PHASE 1 DAY 2: Hard validation before channel details access
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    try {
+      await validateEncryptionKeyAccess(userId, channelId);
+      console.log(`✅ [E2EE VALIDATION][DETAILS] User ${userId} has valid key for channel ${channelId}`);
+    } catch (e2eeError) {
+      console.error(`❌ [E2EE VALIDATION][DETAILS] User ${userId} lacks key for channel ${channelId}:`, e2eeError.message);
+      return res.status(403).json({
+        error: 'E2EE_KEYS_MISSING',
+        message: 'You do not have encryption keys for this channel. Please rejoin or contact support.'
+      });
+    }
 
     const channel = await Channel.findById(channelId)
       .populate('createdBy', 'username profilePicture email')
