@@ -14,6 +14,11 @@ const registerPresenceHandlers = require('./handlers/presence.socket');
 const registerAdminHandlers = require('./handlers/admin.socket');
 const registerPollHandlers = require('./handlers/polls.socket');
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PHASE 2 DAY 4: Metrics
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { incrementCounter } = require('../shared/metrics');
+
 /**
  * Register all socket handlers
  * @param {Server} io - Socket.io server instance
@@ -82,6 +87,28 @@ function registerSocketHandlers(io, socket) {
                 console.error(`   └─ Event REJECTED (not processed)`);
                 console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
 
+                // PHASE 2 DAY 4: Structured rejection logging
+                const rejectionLog = {
+                    timestamp: new Date().toISOString(),
+                    level: 'WARN',
+                    operation: 'socket.validation',
+                    userId: socket.user?.id || 'unknown',
+                    eventType: eventName,
+                    result: 'REJECTED',
+                    reason: 'SCHEMA_VIOLATION',
+                    validationErrors: result.error.issues.map(i => ({
+                        path: i.path.join('.'),
+                        message: i.message
+                    }))
+                };
+                console.log(JSON.stringify(rejectionLog));
+
+                // PHASE 2 DAY 4: Metrics
+                incrementCounter('socket.validation.rejection', {
+                    eventType: eventName,
+                    reason: 'SCHEMA_VIOLATION'
+                });
+
                 // Optionally emit error back to client
                 socket.emit('validation:error', {
                     event: eventName,
@@ -93,6 +120,22 @@ function registerSocketHandlers(io, socket) {
 
                 return; // Stop processing invalid event
             }
+
+            // PHASE 2 DAY 4: Structured success logging
+            const successLog = {
+                timestamp: new Date().toISOString(),
+                level: 'INFO',
+                operation: 'socket.validation',
+                userId: socket.user?.id || 'unknown',
+                eventType: eventName,
+                result: 'SUCCESS'
+            };
+            console.log(JSON.stringify(successLog));
+
+            // PHASE 2 DAY 4: Metrics
+            incrementCounter('socket.validation.success', {
+                eventType: eventName
+            });
 
             logger.socket(`✅ [Socket Validation] Event "${eventName}" passed validation`);
         }
