@@ -21,16 +21,25 @@ const BaseSocketEvent = z.object({
 
 /**
  * Message event schema (for new message events)
+ * 🔐 PHASE 1 DAY 6: Enhanced validation with E2EE requirements
  */
 const MessageSocketEvent = z.object({
     type: z.literal('messages:new'),
     payload: z.object({
-        channelId: z.string().min(1),
-        workspaceId: z.string().min(1),
-        encryptedContent: z.string().min(1), // E2EE encrypted message
+        channelId: z.string().min(1, 'Channel ID required'),
+        workspaceId: z.string().min(1, 'Workspace ID required'),
+        encryptedContent: z.string().min(1, 'Encrypted content required'), // E2EE ciphertext
         messageId: z.string().optional(),
         replyTo: z.string().optional(),
-        metadata: z.any().optional()
+        // 🔐 E2EE-specific fields (PHASE 1 DAY 6)
+        iv: z.string().optional(), // Initialization vector for AES-GCM
+        authTag: z.string().optional(), // Authentication tag for AES-GCM
+        algorithm: z.string().optional(), // Encryption algorithm identifier
+        metadata: z.object({
+            timestamp: z.number().int().positive().optional(),
+            edited: z.boolean().optional(),
+            attachmentCount: z.number().int().nonnegative().optional()
+        }).optional()
     }),
     version: z.number().int().positive().default(1)
 });
@@ -59,9 +68,28 @@ const TypingEvent = z.object({
     version: z.number().int().positive().default(1)
 });
 
+/**
+ * Presence update event schema
+ * 🔐 PHASE 1 DAY 6: New schema for user presence tracking
+ */
+const PresenceUpdateEvent = z.object({
+    type: z.literal('presence:update'),
+    payload: z.object({
+        userId: z.string().min(1, 'User ID required'),
+        status: z.enum(['online', 'offline', 'away', 'busy'], {
+            errorMap: () => ({ message: 'Status must be: online, offline, away, or busy' })
+        }),
+        timestamp: z.number().int().positive({
+            message: 'Timestamp must be a positive integer'
+        })
+    }),
+    version: z.number().int().positive().default(1)
+});
+
 module.exports = {
     BaseSocketEvent,
     MessageSocketEvent,
     ChannelJoinEvent,
-    TypingEvent
+    TypingEvent,
+    PresenceUpdateEvent
 };
