@@ -12,6 +12,11 @@ const conversationKeysService = require("../../modules/conversations/conversatio
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const { validateEncryptionKeyAccess, joinChannelAtomic } = require("../../shared/e2ee.transactions");
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PHASE 2 DAY 2: Metrics
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { incrementCounter } = require("../../shared/metrics");
+
 /**
  * Create channel (public or private).
  * Body: { name, description?, isPrivate?, memberIds?: [id,...] }
@@ -396,6 +401,11 @@ exports.getChannelMembers = async (req, res) => {
         result: 'SUCCESS'
       };
       console.log(JSON.stringify(successLog));
+
+      // PHASE 2 DAY 2: Metrics
+      incrementCounter('e2ee.validation.success', {
+        endpoint: 'getChannelMembers'
+      });
     } catch (e2eeError) {
       console.error(`❌ [E2EE VALIDATION][MEMBERS] User ${userId} lacks key for channel ${id}:`, e2eeError.message);
 
@@ -412,6 +422,12 @@ exports.getChannelMembers = async (req, res) => {
         errorMessage: e2eeError.message
       };
       console.log(JSON.stringify(failureLog));
+
+      // PHASE 2 DAY 2: Metrics
+      incrementCounter('e2ee.validation.failure', {
+        endpoint: 'getChannelMembers',
+        reason: 'E2EE_KEYS_MISSING'
+      });
 
       return res.status(403).json({
         error: 'E2EE_KEYS_MISSING',
@@ -737,6 +753,11 @@ exports.getChannelDetails = async (req, res) => {
         result: 'SUCCESS'
       };
       console.log(JSON.stringify(successLog));
+
+      // PHASE 2 DAY 2: Metrics
+      incrementCounter('e2ee.validation.success', {
+        endpoint: 'getChannelDetails'
+      });
     } catch (e2eeError) {
       console.error(`❌ [E2EE VALIDATION][DETAILS] User ${userId} lacks key for channel ${channelId}:`, e2eeError.message);
 
@@ -753,6 +774,12 @@ exports.getChannelDetails = async (req, res) => {
         errorMessage: e2eeError.message
       };
       console.log(JSON.stringify(failureLog));
+
+      // PHASE 2 DAY 2: Metrics
+      incrementCounter('e2ee.validation.failure', {
+        endpoint: 'getChannelDetails',
+        reason: 'E2EE_KEYS_MISSING'
+      });
 
       return res.status(403).json({
         error: 'E2EE_KEYS_MISSING',

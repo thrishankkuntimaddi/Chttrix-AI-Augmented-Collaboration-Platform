@@ -8,9 +8,10 @@
 
 const messagesService = require('./messages.service');
 const Channel = require('../../../models/Channel');
+const Message = require('../../../models/Message');
 const User = require('../../../models/User');
 const DMSession = require('../../../models/DMSession');
-const { handleError } = require('../../../utils/responseHelpers');
+const { handleError, badRequest, forbidden } = require('../../../utils/responseHelpers');
 const conversationKeysService = require('../conversations/conversationKeys.service');
 const mongoose = require('mongoose');
 
@@ -18,6 +19,11 @@ const mongoose = require('mongoose');
 // PHASE 1 DAY 1: E2EE Validation
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const { validateEncryptionKeyAccess } = require('../../shared/e2ee.transactions');
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PHASE 2 DAY 2: Metrics
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { incrementCounter } = require('../../shared/metrics');
 
 // ==================== DIRECT MESSAGES ====================
 
@@ -162,6 +168,11 @@ exports.getDMs = async (req, res) => {
                 result: 'SUCCESS'
             };
             console.log(JSON.stringify(successLog));
+
+            // PHASE 2 DAY 2: Metrics
+            incrementCounter('e2ee.validation.success', {
+                endpoint: 'getDMs'
+            });
         } catch (e2eeError) {
             console.error(`❌ [E2EE VALIDATION][DM] User ${userId} lacks key for DM ${sessionId}:`, e2eeError.message);
 
@@ -178,6 +189,12 @@ exports.getDMs = async (req, res) => {
                 errorMessage: e2eeError.message
             };
             console.log(JSON.stringify(failureLog));
+
+            // PHASE 2 DAY 2: Metrics
+            incrementCounter('e2ee.validation.failure', {
+                endpoint: 'getDMs',
+                reason: 'E2EE_KEYS_MISSING'
+            });
 
             return res.status(403).json({
                 error: 'E2EE_KEYS_MISSING',
@@ -439,6 +456,11 @@ exports.getChannelMessages = async (req, res) => {
                 result: 'SUCCESS'
             };
             console.log(JSON.stringify(successLog));
+
+            // PHASE 2 DAY 2: Metrics
+            incrementCounter('e2ee.validation.success', {
+                endpoint: 'getChannelMessages'
+            });
         } catch (e2eeError) {
             console.error(`❌ [E2EE VALIDATION][CHANNEL] User ${userId} lacks key for channel ${channelId}:`, e2eeError.message);
 
@@ -455,6 +477,12 @@ exports.getChannelMessages = async (req, res) => {
                 errorMessage: e2eeError.message
             };
             console.log(JSON.stringify(failureLog));
+
+            // PHASE 2 DAY 2: Metrics
+            incrementCounter('e2ee.validation.failure', {
+                endpoint: 'getChannelMessages',
+                reason: 'E2EE_KEYS_MISSING'
+            });
 
             return res.status(403).json({
                 error: 'E2EE_KEYS_MISSING',
