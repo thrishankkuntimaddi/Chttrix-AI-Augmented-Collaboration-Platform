@@ -58,7 +58,15 @@ export default [
                     ],
                     message: '🚫 LEGACY IMPORT: Use modules/ instead of controllers/. Import from src/modules/{domain}/'
                 }]
-            }]
+            }],
+
+            // PHASE 0: Block edits to frozen legacy code
+            'no-restricted-syntax': ['error',
+                {
+                    selector: 'Program',
+                    message: '🚫 LEGACY FREEZE: This file is read-only. Edit /server/src/features/ or /server/src/modules/ instead.'
+                }
+            ]
         }
     }
 ];

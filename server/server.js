@@ -182,37 +182,44 @@ app.use((req, res, next) => {
   next();
 });
 
+// =============================================================
+// ⚠️ LEGACY ROUTES - DEPRECATED (PHASE 0: 2026-01-31)
+// =============================================================
+// Apply deprecation headers to all legacy routes
+const deprecation = require('./middleware/deprecation');
+
 // Routes
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/admin", require("./middleware/auth"), require("./routes/admin"));
-app.use("/api/admin-dashboard", require("./routes/adminDashboard"));
-app.use("/api/owner-dashboard", require("./routes/ownerDashboard"));
-app.use("/api/manager-dashboard", require("./routes/managerDashboard")); // Old pattern
-app.use("/api/manager", require("./routes/managerDashboard")); // New pattern - supports /api/manager/dashboard/*
-app.use("/api/messages", require("./routes/messages"));
-app.use("/api/polls", require("./routes/polls")); // Poll routes
-app.use("/api/chat", require("./routes/chatList"));
-app.use("/api/channels", require("./routes/channels"));
-app.use("/api/companies", require("./routes/companies"));
-app.use("/api/departments", require("./routes/departments"));
-app.use("/api/workspaces", require("./routes/workspaces"));
-app.use("/api/platform/support", require("./routes/platformSupport"));
-app.use("/api/internal", require("./routes/internalMessaging"));
-app.use("/api/tasks", require("./routes/tasks"));
-app.use("/api/notes", require("./routes/notes"));
-app.use("/api/upload", require("./routes/upload")); // File upload routes
-app.use("/api/updates", require("./routes/updates"));
-app.use("/api/dashboard", require("./routes/dashboard"));
-app.use("/api/favorites", require("./routes/favorites"));
-app.use("/api/users", require("./routes/user"));
-app.use("/api/search", require("./routes/search"));
-app.use("/api/support", require("./routes/support"));
-app.use("/api/audit", require("./routes/audit"));
-app.use("/api/managers", require("./routes/managers"));
-app.use("/api/analytics", require("./routes/analytics"));
-app.use("/api/ai", require("./routes/aiRoutes"));
-app.use("/api/keys", require("./routes/keys")); // E2EE key management (legacy)
-app.use("/api/status", require("./routes/statusRoutes")); // System health status
+app.use("/api/auth", deprecation, require("./routes/auth"));
+app.use("/api/admin", deprecation, require("./middleware/auth"), require("./routes/admin"));
+app.use("/api/admin-dashboard", deprecation, require("./routes/adminDashboard"));
+app.use("/api/owner-dashboard", deprecation, require("./routes/ownerDashboard"));
+app.use("/api/manager-dashboard", deprecation, require("./routes/managerDashboard")); // Old pattern
+app.use("/api/manager", deprecation, require("./routes/managerDashboard")); // New pattern - supports /api/manager/dashboard/*
+app.use("/api/messages", deprecation, require("./routes/messages"));
+app.use("/api/polls", deprecation, require("./routes/polls")); // Poll routes
+app.use("/api/chat", deprecation, require("./routes/chatList"));
+app.use("/api/channels", deprecation, require("./routes/channels"));
+app.use("/api/companies", deprecation, require("./routes/companies"));
+app.use("/api/departments", deprecation, require("./routes/departments"));
+app.use("/api/workspaces", deprecation, require("./routes/workspaces"));
+app.use("/api/platform/support", deprecation, require("./routes/platformSupport"));
+app.use("/api/internal", deprecation, require("./routes/internalMessaging"));
+app.use("/api/tasks", deprecation, require("./routes/tasks"));
+app.use("/api/notes", deprecation, require("./routes/notes"));
+app.use("/api/upload", deprecation, require("./routes/upload")); // File upload routes
+app.use("/api/updates", deprecation, require("./routes/updates"));
+app.use("/api/dashboard", deprecation, require("./routes/dashboard"));
+app.use("/api/favorites", deprecation, require("./routes/favorites"));
+app.use("/api/users", deprecation, require("./routes/user"));
+app.use("/api/search", deprecation, require("./routes/search"));
+app.use("/api/support", deprecation, require("./routes/support"));
+app.use("/api/audit", deprecation, require("./routes/audit"));
+app.use("/api/managers", deprecation, require("./routes/managers"));
+app.use("/api/analytics", deprecation, require("./routes/analytics"));
+app.use("/api/ai", deprecation, require("./routes/aiRoutes"));
+app.use("/api/keys", deprecation, require("./routes/keys")); // E2EE key management (legacy)
+app.use("/api/status", deprecation, require("./routes/statusRoutes")); // System health status
+// =============================================================
 
 
 // =============================================================
