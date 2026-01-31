@@ -14,6 +14,11 @@ const { handleError } = require('../../../utils/responseHelpers');
 const conversationKeysService = require('../conversations/conversationKeys.service');
 const mongoose = require('mongoose');
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PHASE 1 DAY 1: E2EE Validation
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const { validateEncryptionKeyAccess } = require('../../shared/e2ee.transactions');
+
 // ==================== DIRECT MESSAGES ====================
 
 /**
@@ -136,6 +141,23 @@ exports.getDMs = async (req, res) => {
         const { workspaceId, dmSessionId, dmId } = req.params;
         const { limit, before } = req.query;
 
+        // Support both parameter names for backward compatibility
+        const sessionId = dmSessionId || dmId;
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🔐 PHASE 1 DAY 1: Hard validation before DM message access
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        try {
+            await validateEncryptionKeyAccess(userId, sessionId);
+            console.log(`✅ [E2EE VALIDATION][DM] User ${userId} has valid key for DM ${sessionId}`);
+        } catch (e2eeError) {
+            console.error(`❌ [E2EE VALIDATION][DM] User ${userId} lacks key for DM ${sessionId}:`, e2eeError.message);
+            return res.status(403).json({
+                error: 'E2EE_KEYS_MISSING',
+                message: 'You do not have encryption keys for this conversation. Please refresh or contact support.'
+            });
+        }
+
         console.log('🔍 [getDMs] DEBUG:', {
             userId,
             workspaceId,
@@ -145,9 +167,6 @@ exports.getDMs = async (req, res) => {
             fullPath: req.path,
             originalUrl: req.originalUrl
         });
-
-        // Support both parameter names for backward compatibility
-        const sessionId = dmSessionId || dmId;
 
         console.log('🔍 [getDMs] Looking up DM session:', {
             sessionId,
@@ -374,6 +393,20 @@ exports.getChannelMessages = async (req, res) => {
         const userId = req.user.sub;
         const { channelId } = req.params;
         const { limit, before } = req.query;
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🔐 PHASE 1 DAY 1: Hard validation before channel message access
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        try {
+            await validateEncryptionKeyAccess(userId, channelId);
+            console.log(`✅ [E2EE VALIDATION][CHANNEL] User ${userId} has valid key for channel ${channelId}`);
+        } catch (e2eeError) {
+            console.error(`❌ [E2EE VALIDATION][CHANNEL] User ${userId} lacks key for channel ${channelId}:`, e2eeError.message);
+            return res.status(403).json({
+                error: 'E2EE_KEYS_MISSING',
+                message: 'You do not have encryption keys for this channel. Please rejoin or contact support.'
+            });
+        }
 
         // Find channel
         const channel = await Channel.findById(channelId);
