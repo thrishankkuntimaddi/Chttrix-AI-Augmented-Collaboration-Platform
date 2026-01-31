@@ -11,7 +11,7 @@
  */
 
 const mongoose = require('mongoose');
-const Channel = require('../../../models/Channel');
+const Channel = require('../../models/Channel');
 const conversationKeysService = require('../modules/conversations/conversationKeys.service');
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
