@@ -51,6 +51,54 @@ function registerSocketHandlers(io, socket) {
         });
     });
 
+    // ============================================================
+    // PHASE 0 DAY 2: Socket Event Schema Validation
+    // ============================================================
+    // Validate ALL incoming socket events against base schema
+    const { BaseSocketEvent } = require('./schema/baseEvent.schema');
+
+    socket.onAny((eventName, ...args) => {
+        // Skip internal Socket.IO events
+        if (eventName.startsWith('socket:') || eventName === 'disconnect' || eventName === 'error') {
+            return;
+        }
+
+        // Validate event structure
+        const eventData = args[0]; // First argument is usually the event data
+
+        if (typeof eventData === 'object' && eventData !== null) {
+            const result = BaseSocketEvent.safeParse(eventData);
+
+            if (!result.success) {
+                console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+                console.error(`🚫 [SOCKET VALIDATION] Event validation FAILED`);
+                console.error(`   ├─ Event: ${eventName}`);
+                console.error(`   ├─ User: ${socket.user?.id || 'unknown'}`);
+                console.error(`   ├─ Socket ID: ${socket.id}`);
+                console.error(`   ├─ Validation errors:`);
+                result.error.issues.forEach((issue, idx) => {
+                    console.error(`   │  ${idx + 1}. ${issue.path.join('.')} - ${issue.message}`);
+                });
+                console.error(`   └─ Event REJECTED (not processed)`);
+                console.error(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+
+                // Optionally emit error back to client
+                socket.emit('validation:error', {
+                    event: eventName,
+                    errors: result.error.issues.map(i => ({
+                        path: i.path.join('.'),
+                        message: i.message
+                    }))
+                });
+
+                return; // Stop processing invalid event
+            }
+
+            logger.socket(`✅ [Socket Validation] Event "${eventName}" passed validation`);
+        }
+    });
+    // ============================================================
+
     // Handle errors
     socket.on('error', (error) => {
         console.error(`Socket error for user ${socket.user.id}:`, error);
