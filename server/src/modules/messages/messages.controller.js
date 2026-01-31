@@ -150,8 +150,35 @@ exports.getDMs = async (req, res) => {
         try {
             await validateEncryptionKeyAccess(userId, sessionId);
             console.log(`✅ [E2EE VALIDATION][DM] User ${userId} has valid key for DM ${sessionId}`);
+
+            // PHASE 2 DAY 1: Structured success logging
+            const successLog = {
+                timestamp: new Date().toISOString(),
+                level: 'INFO',
+                operation: 'e2ee.validation',
+                endpoint: 'getDMs',
+                userId: userId,
+                conversationId: sessionId,
+                result: 'SUCCESS'
+            };
+            console.log(JSON.stringify(successLog));
         } catch (e2eeError) {
             console.error(`❌ [E2EE VALIDATION][DM] User ${userId} lacks key for DM ${sessionId}:`, e2eeError.message);
+
+            // PHASE 2 DAY 1: Structured failure logging
+            const failureLog = {
+                timestamp: new Date().toISOString(),
+                level: 'WARN',
+                operation: 'e2ee.validation',
+                endpoint: 'getDMs',
+                userId: userId,
+                conversationId: sessionId,
+                result: 'FAILURE',
+                reason: 'E2EE_KEYS_MISSING',
+                errorMessage: e2eeError.message
+            };
+            console.log(JSON.stringify(failureLog));
+
             return res.status(403).json({
                 error: 'E2EE_KEYS_MISSING',
                 message: 'You do not have encryption keys for this conversation. Please refresh or contact support.'
@@ -400,8 +427,35 @@ exports.getChannelMessages = async (req, res) => {
         try {
             await validateEncryptionKeyAccess(userId, channelId);
             console.log(`✅ [E2EE VALIDATION][CHANNEL] User ${userId} has valid key for channel ${channelId}`);
+
+            // PHASE 2 DAY 1: Structured success logging
+            const successLog = {
+                timestamp: new Date().toISOString(),
+                level: 'INFO',
+                operation: 'e2ee.validation',
+                endpoint: 'getChannelMessages',
+                userId: userId,
+                channelId: channelId,
+                result: 'SUCCESS'
+            };
+            console.log(JSON.stringify(successLog));
         } catch (e2eeError) {
             console.error(`❌ [E2EE VALIDATION][CHANNEL] User ${userId} lacks key for channel ${channelId}:`, e2eeError.message);
+
+            // PHASE 2 DAY 1: Structured failure logging
+            const failureLog = {
+                timestamp: new Date().toISOString(),
+                level: 'WARN',
+                operation: 'e2ee.validation',
+                endpoint: 'getChannelMessages',
+                userId: userId,
+                channelId: channelId,
+                result: 'FAILURE',
+                reason: 'E2EE_KEYS_MISSING',
+                errorMessage: e2eeError.message
+            };
+            console.log(JSON.stringify(failureLog));
+
             return res.status(403).json({
                 error: 'E2EE_KEYS_MISSING',
                 message: 'You do not have encryption keys for this channel. Please rejoin or contact support.'
