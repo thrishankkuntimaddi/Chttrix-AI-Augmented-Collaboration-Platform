@@ -71,15 +71,47 @@ export default function ContactsProvider({ children }) {
         label: ch.name,
         path: `/channels/${ch._id}`,
         isFavorite: favoriteItemIds.includes(String(ch._id)),
-        isPrivate: ch.isPrivate,
+        isPrivate: ch.isPrivate ?? false,
         isDiscoverable: ch.isDiscoverable ?? true, // Default to true for backward compatibility
-        isMember: ch.isMember ?? true, // Assume member if returned by endpoint
+        isMember: ch.isMember ?? false, // 🔒 SECURITY: Default to FALSE - backend always sends this, but safer to hide by default
         description: ch.description
       }));
 
-      // Filter: Only show channels where user is a member OR channel is discoverable
-      // This ensures non-discoverable public channels don't appear for non-members
-      const filteredChannels = channelsData.filter(ch => ch.isMember || ch.isDiscoverable);
+      //  DEBUG: Log raw channel data BEFORE filtering
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('[ContactsContext] RAW channelsData BEFORE filtering:', channelsData.length);
+      channelsData.forEach(ch => {
+        console.log(`  [${ch.label}] isPrivate=${ch.isPrivate}, isDiscoverable=${ch.isDiscoverable}, isMember=${ch.isMember}`);
+      });
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      // �🔒 SECURITY FIX: Proper channel visibility filtering
+      // Only show channels where:
+      // 1. User is a member, OR
+      // 2. Channel is public (not private) AND discoverable
+      // This prevents non-discoverable public channels from appearing to non-members
+      const filteredChannels = channelsData.filter(ch => {
+        // Always show if user is a member
+        if (ch.isMember) {
+          console.log(`  ✅ [${ch.label}] SHOW - isMember=true`);
+          return true;
+        }
+
+        // Show public discoverable channels to all workspace members
+        if (!ch.isPrivate && ch.isDiscoverable) {
+          console.log(`  ✅ [${ch.label}] SHOW - public + discoverable`);
+          return true;
+        }
+
+        // Hide everything else (private channels, non-discoverable non-member channels)
+        console.log(`  ❌ [${ch.label}] HIDE - isPrivate=${ch.isPrivate}, isDiscoverable=${ch.isDiscoverable}, isMember=${ch.isMember}`);
+        return false;
+      });
+
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`[ContactsContext] FILTERED channels: ${filteredChannels.length}/${channelsData.length}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
 
       // Format DMs from workspace sessions
       const rawDMs = chatListRes.data.sessions || [];
@@ -164,6 +196,13 @@ export default function ContactsProvider({ children }) {
       const currentWsId = getCurrentWorkspaceId();
       if (channel.workspace !== currentWsId) return;
 
+      // 🔒 CRITICAL FIX: Compute isMember by checking if current user is in members array
+      // Do NOT default to true - that's the bug!
+      const currentUserId = localStorage.getItem('userId');
+      const isMember = channel.members?.some(m => {
+        const memberId = m.user?._id || m.user || m;
+        return memberId.toString() === currentUserId?.toString();
+      }) ?? false; // Default to FALSE if members array is missing
 
       const newChannel = {
         id: channel._id,
@@ -173,10 +212,19 @@ export default function ContactsProvider({ children }) {
         isFavorite: false,
         isPrivate: channel.isPrivate,
         isDiscoverable: channel.isDiscoverable ?? true,
-        isMember: true, // If we received this event, we're likely a member or it's discoverable
+        isMember: isMember, // Use computed value, not default true!
         description: channel.description
       };
-      setChannels(prev => [...prev, newChannel]);
+
+      // 🔒 SECURITY FIX: Apply same visibility filter as loadAllData
+      // Only add to state if user should see this channel
+      const shouldShow = newChannel.isMember || (!newChannel.isPrivate && newChannel.isDiscoverable);
+
+      console.log(`[handleChannelCreated] ${newChannel.label}: isMember=${newChannel.isMember}, shouldShow=${shouldShow}`);
+
+      if (shouldShow) {
+        setChannels(prev => [...prev, newChannel]);
+      }
     };
 
     const handleChannelUpdated = (data) => {

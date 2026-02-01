@@ -52,7 +52,6 @@ import JoinChannel from "./pages/JoinChannel";
 
 import ChttrixDocs from "./pages/ChttrixDocs";
 import Careers from "./pages/Careers";
-// import PagePlaceholder from "./pages/PagePlaceholder"; // Removed unused
 
 // Footer Pages
 import About from "./pages/company/About";
@@ -93,14 +92,9 @@ import OwnerAnalytics from './pages/OwnerDashboard/OwnerAnalytics'; // NEW
 import AdminsManagement from './pages/OwnerDashboard/AdminsManagement'; // NEW - Owner's admin management
 import OwnerBilling from './pages/OwnerDashboard/OwnerBilling'; // NEW - Dedicated billing page
 import OwnerSecurity from './pages/OwnerDashboard/OwnerSecurity'; // NEW - Dedicated security page
-// import ManagerDashboard from "./pages/ManagerDashboard"; // Unused
 import ManagerOverview from "./components/manager/ManagerOverview";
-// import ManagerWorkspaces from "./components/manager/ManagerWorkspaces";
-// import ManagerProjects from "./components/manager/ManagerProjects"; // NEW
-// import ManagerLocation from "./components/manager/ManagerLocation"; // NEW - Unused
 import ManagerTasks from "./components/manager/ManagerTasks";
 import ManagerReports from "./components/manager/ManagerReports";
-// import ManagerContactAdmin from "./components/manager/ManagerContactAdmin"; // Unused
 import ManagerSettings from "./components/manager/ManagerSettings"; // NEW
 import TeamAllocation from "./components/manager/TeamAllocation";
 import UnassignedMembers from "./components/manager/UnassignedMembers"; // New component

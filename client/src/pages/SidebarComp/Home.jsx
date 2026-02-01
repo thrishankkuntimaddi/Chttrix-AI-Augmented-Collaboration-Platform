@@ -33,8 +33,22 @@ const Home = () => {
         if (location.pathname.includes("/channel/") && id) {
           // Fetch channel info with complete metadata
           const res = await api.get(`/api/workspaces/${workspaceId}/channels`);
-          const channels = res.data.channels || [];
-          const channel = channels.find(c => String(c._id) === String(id) || c.name === id);
+          const allChannels = res.data.channels || [];
+
+          // 🔒 SAFETY FILTER: Exclude non-member, non-discoverable channels
+          // This is a client-side safety check in case backend filtering fails
+          const visibleChannels = allChannels.filter(ch => {
+            // Always show if user is a member
+            if (ch.isMember) return true;
+
+            // Show public discoverable channels
+            if (!ch.isPrivate && ch.isDiscoverable) return true;
+
+            // Hide everything else (private or non-discoverable non-member)
+            return false;
+          });
+
+          const channel = visibleChannels.find(c => String(c._id) === String(id) || c.name === id);
 
           if (channel) {
             setActiveChat({

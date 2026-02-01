@@ -6,6 +6,7 @@ const { forbidden, notFound, badRequest, handleError } = require("../../../utils
 const mongoose = require('mongoose');
 const { emitToWorkspace, emitToChannel, emitToUser, emitToUsers } = require("../../../utils/socketHelpers");
 const conversationKeysService = require("../../modules/conversations/conversationKeys.service");
+const { saveWithRetry } = require("../../../utils/mongooseRetry");
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // PHASE 1 DAY 2: E2EE Validation
@@ -102,6 +103,7 @@ exports.createChannel = async (req, res) => {
       description: channel.description,
       members: channel.members,
       isPrivate: channel.isPrivate,
+      isDiscoverable: channel.isDiscoverable, // 🔒 SECURITY: Required for client-side visibility filtering
       createdBy: channel.createdBy,
       createdAt: channel.createdAt,
       workspace: channel.workspace,
