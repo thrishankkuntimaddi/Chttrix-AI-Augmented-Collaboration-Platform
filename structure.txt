@@ -14,6 +14,7 @@
 │   │   │   ├── ChttrixLogo-light.svg
 │   │   │   └── ChttrixLogo.svg
 │   │   ├── chttrix-logo.jpg
+│   │   ├── default-avatar.svg
 │   │   ├── favicon.ico
 │   │   ├── favicon.png
 │   │   ├── hover-animation.mp4
@@ -26,6 +27,8 @@
 │   │   ├── api
 │   │   │   └── endpoints
 │   │   ├── components
+│   │   │   ├── ErrorBoundary.jsx
+│   │   │   ├── ErrorBoundaryTest.jsx
 │   │   │   ├── InvitePeopleModal.jsx
 │   │   │   ├── RequireAdmin.jsx
 │   │   │   ├── RequireAuth.jsx
@@ -78,7 +81,6 @@
 │   │   │   │           ├── WorkspaceHeader.jsx
 │   │   │   │           ├── WorkspaceModals.jsx
 │   │   │   │           ├── WorkspaceSettingsModal.jsx
-│   │   │   │           ├── WorkspaceSettingsModal.jsx.backup
 │   │   │   │           └── index.jsx
 │   │   │   ├── layout
 │   │   │   │   ├── CompanyAdminLayout.jsx
@@ -100,8 +102,6 @@
 │   │   │   │   ├── LoginForm.jsx
 │   │   │   │   └── SignupForm.jsx
 │   │   │   ├── manager
-│   │   │   │   ├── ManagerContactAdmin.jsx
-│   │   │   │   ├── ManagerLocation.jsx
 │   │   │   │   ├── ManagerOverview.jsx
 │   │   │   │   ├── ManagerReports.jsx
 │   │   │   │   ├── ManagerSettings.jsx
@@ -263,22 +263,6 @@
 │   │   │   └── useUsers.js
 │   │   ├── index.css
 │   │   ├── index.js
-│   │   ├── modules
-│   │   │   └── chat
-│   │   │       ├── README.md
-│   │   │       ├── components
-│   │   │       │   ├── MessageList.jsx
-│   │   │       │   └── index.js
-│   │   │       ├── encryption
-│   │   │       │   └── chatEncryption.js
-│   │   │       ├── hooks
-│   │   │       │   ├── useConversation.js
-│   │   │       │   ├── useMessages.js
-│   │   │       │   └── useRealtimeEvents.js
-│   │   │       ├── index.js
-│   │   │       ├── services
-│   │   │       └── types
-│   │   │           └── primitives.js
 │   │   ├── pages
 │   │   │   ├── AcceptInvite.jsx
 │   │   │   ├── AdminDashboard
@@ -292,7 +276,6 @@
 │   │   │   ├── ChttrixDocs.jsx
 │   │   │   ├── CompanyConfirmation.jsx
 │   │   │   ├── CompanySetup.jsx
-│   │   │   ├── DepartmentManagement.jsx
 │   │   │   ├── FeatureShowcase.jsx
 │   │   │   ├── JoinChannel.jsx
 │   │   │   ├── JoinWorkspace.jsx
@@ -302,11 +285,6 @@
 │   │   │   │   ├── OAuthPasswordSetup.jsx
 │   │   │   │   ├── OAuthSuccess.jsx
 │   │   │   │   └── ResetPassword.jsx
-│   │   │   ├── ManagerDashboard
-│   │   │   │   ├── MyWorkspaces.jsx
-│   │   │   │   ├── TeamLoad.jsx
-│   │   │   │   ├── UnassignedEmployees.jsx
-│   │   │   │   └── index.jsx
 │   │   │   ├── OwnerDashboard
 │   │   │   │   ├── ActivityHealth.jsx
 │   │   │   │   ├── AdminsManagement.jsx
@@ -484,6 +462,7 @@
 ├── postcss.config.js
 ├── railway.json
 ├── server
+│   ├── ARCHITECTURE.md
 │   ├── Dockerfile
 │   ├── clearMessages.js
 │   ├── config
@@ -517,6 +496,7 @@
 │   │   ├── searchController.js
 │   │   ├── statusController.js
 │   │   ├── taskController.js
+│   │   ├── testController.js
 │   │   ├── threadController.js
 │   │   ├── updateController.js
 │   │   ├── uploadController.js
@@ -529,6 +509,7 @@
 │   ├── initWorkspaceKeys.js
 │   ├── middleware
 │   │   ├── auth.js
+│   │   ├── deprecation.js
 │   │   ├── permissionMiddleware.js
 │   │   ├── permissions.js
 │   │   └── validate.js
@@ -611,12 +592,19 @@
 │   │   ├── migrateChannelSystemEvents.js
 │   │   ├── nukeDbPreserveAdmin.js
 │   │   ├── populateSystemEventUserNames.js
+│   │   ├── repairKeyDistribution.js
 │   │   ├── seed.js
-│   │   └── tests
-│   │       ├── list-models.js
-│   │       ├── test-api-direct.js
-│   │       ├── test-chat-endpoint.js
-│   │       └── test-gemini.js
+│   │   ├── test-atomic-rollback.js
+│   │   ├── tests
+│   │   │   ├── list-models.js
+│   │   │   ├── test-api-direct.js
+│   │   │   ├── test-chat-endpoint.js
+│   │   │   └── test-gemini.js
+│   │   ├── verify-auth-migration.js
+│   │   ├── verify-channel-migration.js
+│   │   ├── verify-legacy-deprecation.js
+│   │   ├── verify-message-migration.js
+│   │   └── verify-poll-migration.js
 │   ├── server
 │   │   └── uploads
 │   │       └── notes
@@ -625,7 +613,6 @@
 │   │           ├── images
 │   │           └── videos
 │   ├── server.js
-│   ├── server_debug.log
 │   ├── socket
 │   │   └── index.js
 │   ├── socket.js
@@ -640,6 +627,8 @@
 │   │   │   │   ├── channel.controller.js
 │   │   │   │   ├── channel.model.js
 │   │   │   │   └── channel.routes.js
+│   │   │   ├── chat
+│   │   │   │   └── chat.controller.js
 │   │   │   ├── companies
 │   │   │   ├── messages
 │   │   │   │   ├── message.controller.js
@@ -687,6 +676,8 @@
 │   │   ├── services
 │   │   │   └── auditDigestService.js
 │   │   ├── shared
+│   │   │   ├── e2ee.transactions.js
+│   │   │   ├── metrics.js
 │   │   │   ├── middleware
 │   │   │   │   ├── auth.js
 │   │   │   │   ├── permissionMiddleware.js
@@ -705,6 +696,8 @@
 │   │       │   ├── polls.socket.js
 │   │       │   └── presence.socket.js
 │   │       ├── index.js
+│   │       ├── schema
+│   │       │   └── baseEvent.schema.js
 │   │       └── services
 │   │           └── socketEmitter.js
 │   ├── uploads
@@ -742,4 +735,4 @@
 ├── update-structure.sh
 └── verify-security.sh
 
-151 directories, 592 files
+145 directories, 591 files
