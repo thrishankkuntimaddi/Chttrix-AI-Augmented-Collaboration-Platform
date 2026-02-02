@@ -1,4 +1,5 @@
-// server/src/features/messages/message.routes.js
+// server/routes/messages.js
+// CANONICAL: src/modules/messages/messages.controller.js
 const express = require("express");
 const router = express.Router();
 
@@ -10,7 +11,8 @@ const {
   sendChannelMessage,
   getDMs,
   getChannelMessages,
-  getWorkspaceDMList
+  getWorkspaceDMList,
+  resolveDMSession
 } = require("../../modules/messages/messages.controller");
 
 // -----------------------
@@ -42,6 +44,10 @@ router.post("/upload", requireAuth, upload.array('files', 5), (req, res) => {
 // -----------------------
 router.post("/dm/send", requireAuth, sendDirectMessage);
 router.get("/dm/:workspaceId/:dmSessionId", requireAuth, getDMs);
+
+// Resolve user ID to DM session ID (find or create with encryption)
+router.get("/workspace/:workspaceId/dm/resolve/:userId", requireAuth, resolveDMSession);
+
 router.get("/workspace/:workspaceId/dms", requireAuth, getWorkspaceDMList);
 
 // -----------------------
